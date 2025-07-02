@@ -4,6 +4,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -14,11 +15,21 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// POST /send – recebe leads do site ou Z-API
 app.post('/send', (req, res) => {
-  const { fbc, phone, name } = req.body;
+  let { fbc, phone, name, message } = req.body;
 
-  if (!fbc || !fbc.startsWith('fb.')) {
-    return res.status(400).json({ error: 'FBC inválido ou ausente' });
+  // 🔍 Detecta fbc invisível dentro da mensagem (ex: .fbc.fb.1.xxxxx)
+  if (!fbc && typeof message === "string") {
+    const match = message.match(/\\.fbc\\.(fb\\.1\\.[a-zA-Z0-9._-]+)/);
+    if (match && match[1]) {
+      fbc = match[1];
+    }
+  }
+
+  // Se não tiver fbc válido ou phone, ignora
+  if (!fbc || !fbc.startsWith('fb.') || !phone) {
+    return res.status(400).json({ error: 'Dados incompletos' });
   }
 
   const logPath = path.join(__dirname, 'tracker-fbc-log.json');
@@ -46,6 +57,7 @@ app.post('/send', (req, res) => {
   res.json({ success: true });
 });
 
+// GET /
 app.get('/', (req, res) => {
   res.send('FBC Tracker online - POST /send');
 });
