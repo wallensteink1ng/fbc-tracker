@@ -19,7 +19,7 @@ app.use(express.json());
 app.post('/send', (req, res) => {
   let { fbc, phone, name, message } = req.body;
 
-  // 🔍 Primeiro tenta extrair o fbc da mensagem se não veio direto
+  // Tenta extrair o fbc da mensagem, se não veio direto
   if (!fbc && typeof message === "string") {
     const match = message.match(/\\.fbc\\.(fb\\.1\\.[a-zA-Z0-9._-]+)/);
     if (match && match[1]) {
@@ -27,7 +27,7 @@ app.post('/send', (req, res) => {
     }
   }
 
-  // ❌ Se ainda não tiver fbc válido ou phone, ignora
+  // Se ainda não tiver fbc válido ou phone, ignora
   if (!fbc || !fbc.startsWith('fb.') || !phone) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
@@ -59,10 +59,13 @@ app.post('/send', (req, res) => {
   res.json({ success: true });
 });
 
-// Página inicial (GET /)
+// Página inicial
 app.get('/', (req, res) => {
   res.send('FBC Tracker online - POST /send');
 });
+
+// Torna o JSON acessível para o painel
+app.use('/tracker-fbc-log.json', express.static(path.join(__dirname, 'tracker-fbc-log.json')));
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
