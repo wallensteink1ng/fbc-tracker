@@ -19,15 +19,15 @@ app.use(express.json());
 app.post('/send', (req, res) => {
   let { fbc, phone, name, message } = req.body;
 
-  // Tenta extrair o fbc da mensagem, se não veio direto
+  // ✅ Corrigido: regex correta para detectar .fbc.fb.1...
   if (!fbc && typeof message === "string") {
-    const match = message.match(/\\.fbc\\.(fb\\.1\\.[a-zA-Z0-9._-]+)/);
+    const match = message.match(/\.fbc\.(fb\.1\.[a-zA-Z0-9._-]+)/);
     if (match && match[1]) {
       fbc = match[1];
     }
   }
 
-  // Se ainda não tiver fbc válido ou phone, ignora
+  // ❌ Se ainda não tiver fbc válido ou phone, ignora
   if (!fbc || !fbc.startsWith('fb.') || !phone) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
@@ -64,7 +64,7 @@ app.get('/', (req, res) => {
   res.send('FBC Tracker online - POST /send');
 });
 
-// Torna o JSON acessível para o painel
+// 📂 Rota pública para o painel acessar o JSON
 app.use('/tracker-fbc-log.json', express.static(path.join(__dirname, 'tracker-fbc-log.json')));
 
 app.listen(PORT, () => {
