@@ -15,11 +15,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// POST /send – recebe leads do site ou Z-API
+// POST /send – recebe leads do site ou da Z-API
 app.post('/send', (req, res) => {
   let { fbc, phone, name, message } = req.body;
 
-  // 🔍 Detecta fbc invisível dentro da mensagem (ex: .fbc.fb.1.xxxxx)
+  // 🔍 Primeiro tenta extrair o fbc da mensagem se não veio direto
   if (!fbc && typeof message === "string") {
     const match = message.match(/\\.fbc\\.(fb\\.1\\.[a-zA-Z0-9._-]+)/);
     if (match && match[1]) {
@@ -27,7 +27,7 @@ app.post('/send', (req, res) => {
     }
   }
 
-  // Se não tiver fbc válido ou phone, ignora
+  // ❌ Se ainda não tiver fbc válido ou phone, ignora
   if (!fbc || !fbc.startsWith('fb.') || !phone) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
@@ -37,7 +37,9 @@ app.post('/send', (req, res) => {
 
   try {
     log = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-  } catch (e) {}
+  } catch (e) {
+    log = [];
+  }
 
   const existing = log.find(entry => entry.fbc === fbc);
 
@@ -57,7 +59,7 @@ app.post('/send', (req, res) => {
   res.json({ success: true });
 });
 
-// GET /
+// Página inicial (GET /)
 app.get('/', (req, res) => {
   res.send('FBC Tracker online - POST /send');
 });
