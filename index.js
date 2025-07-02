@@ -15,11 +15,10 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// POST /send – recebe leads do site ou da Z-API
 app.post('/send', (req, res) => {
   let { fbc, phone, name, message } = req.body;
 
-  // ✅ Corrigido: regex correta para detectar .fbc.fb.1...
+  // ✅ Regex corrigida: detecta .fbc.fb.1... dentro da mensagem
   if (!fbc && typeof message === "string") {
     const match = message.match(/\.fbc\.(fb\.1\.[a-zA-Z0-9._-]+)/);
     if (match && match[1]) {
@@ -31,6 +30,9 @@ app.post('/send', (req, res) => {
   if (!fbc || !fbc.startsWith('fb.') || !phone) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
+
+  // 🟢 Loga no console do Render
+  console.log('✅ Novo lead recebido:', { fbc, phone, name });
 
   const logPath = path.join(__dirname, 'tracker-fbc-log.json');
   let log = [];
