@@ -27,7 +27,7 @@ app.post("/send", (req, res) => {
       }
     } catch (e) {
       // fallback: tenta extrair do texto com regex
-      const match = message.match(/\\.fbc\\.(fb\\.1\\.[a-zA-Z0-9._-]+)/);
+      const match = message.match(/\.fbc\.(fb\.1\.[a-zA-Z0-9._-]+)/);
       if (match && match[1]) fbc = match[1];
     }
   }
@@ -40,6 +40,7 @@ app.post("/send", (req, res) => {
 
   const logPath = path.join(__dirname, "tracker-fbc-log.json");
   let log = [];
+
   try {
     log = JSON.parse(fs.readFileSync(logPath, "utf8"));
   } catch (e) {
@@ -56,3 +57,15 @@ app.post("/send", (req, res) => {
       phone: phone || null,
       name: name || null,
       timestamp: new Date().toISOString()
+    });
+  }
+
+  fs.writeFileSync(logPath, JSON.stringify(log, null, 2));
+  res.json({ success: true });
+});
+
+app.get("/", (req, res) => res.send("FBC Tracker online - POST /send"));
+
+app.use("/tracker-fbc-log.json", express.static(path.join(__dirname, "tracker-fbc-log.json")));
+
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
