@@ -2,44 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tracker FBC Panel</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f7f9fb;
-      padding: 40px;
-      text-align: center;
+      background: #f0f2f5;
+      padding: 20px;
+      margin: 0;
     }
     .container {
-      max-width: 800px;
+      max-width: 1000px;
       margin: auto;
-      background: white;
-      padding: 25px;
+      background: #fff;
+      padding: 30px 20px;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.05);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type="text"], input[type="password"], button {
+      padding: 12px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      box-sizing: border-box;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 15px;
     }
     th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #ccc;
       font-size: 14px;
     }
     th {
-      background-color: #083f83;
-      color: white;
+      background: #0d47a1;
+      color: #fff;
     }
-    input[type="text"], button {
-      padding: 10px;
-      margin-top: 15px;
-      margin-bottom: 10px;
-      width: 100%;
-      font-size: 15px;
+    .hidden {
+      display: none;
     }
-    .hidden { display: none; }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      tr {
+        margin-bottom: 15px;
+      }
+      th, td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+      }
+      th::before, td::before {
+        position: absolute;
+        left: 15px;
+        width: 45%;
+        white-space: nowrap;
+        font-weight: bold;
+        text-align: left;
+      }
+      th:nth-of-type(1)::before { content: "FBC"; }
+      th:nth-of-type(2)::before { content: "Phone"; }
+      th:nth-of-type(3)::before { content: "Name"; }
+      th:nth-of-type(4)::before { content: "Timestamp"; }
+      td:nth-of-type(1)::before { content: "FBC"; }
+      td:nth-of-type(2)::before { content: "Phone"; }
+      td:nth-of-type(3)::before { content: "Name"; }
+      td:nth-of-type(4)::before { content: "Timestamp"; }
+    }
   </style>
 </head>
 <body>
@@ -52,7 +89,7 @@
     </div>
 
     <div id="panel" class="hidden">
-      <input type="text" id="search" placeholder="Buscar por telefone ou fbc..." onkeyup="filterTable()">
+      <input type="text" id="search" placeholder="Buscar por telefone, nome ou fbc..." onkeyup="filterTable()">
       <table>
         <thead>
           <tr>
@@ -82,20 +119,25 @@
     }
 
     async function loadLog() {
-      const res = await fetch('/tracker-fbc-log.json');
-      const data = await res.json();
-      const tbody = document.getElementById("logBody");
-      tbody.innerHTML = "";
-      data.forEach(entry => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${entry.fbc}</td>
-          <td>${entry.phone || ""}</td>
-          <td>${entry.name || ""}</td>
-          <td>${entry.timestamp || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      try {
+        const res = await fetch('/tracker-fbc-log.json');
+        const data = await res.json();
+        const tbody = document.getElementById("logBody");
+        tbody.innerHTML = "";
+        data.forEach(entry => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${entry.fbc}</td>
+            <td>${entry.phone || ""}</td>
+            <td>${entry.name || ""}</td>
+            <td>${entry.timestamp || ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        alert("Erro ao carregar os dados do log.");
+        console.error(err);
+      }
     }
 
     function filterTable() {
