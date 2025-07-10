@@ -4,9 +4,8 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const EMPRESA_PHONE = '353892490262'; // número da Barbara Cleaning
+const BUSINESS_NUMBER = "353892490262"; // Número da empresa (para ignorar)
 
-// Libera CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -17,39 +16,40 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// Rota principal para rastreamento (usada por site e Z-API)
 app.post("/send", (req, res) => {
-  let { fbc, phone, name, message, sender } = req.body;
+  let { fbc, phone, name, message, fromMe, sender = {} } = req.body;
 
-  // Tenta capturar o número real do cliente vindo da Z-API
-  if (!phone && sender && sender.phone) {
-    phone = sender.phone;
-  }
+  // Pega número real da Z-API
+  const senderPhone = sender.phone || phone;
 
-  // Tenta extrair o fbc da URL ou texto, se não veio direto
+  // Se não veio fbc, tenta extrair da mensagem
   if (!fbc && typeof message === "string") {
     try {
       const url = new URL(message);
-      const fbcParam = url.searchParams.get("fbc");
-      if (fbcParam) fbc = fbcParam;
-    } catch (e) {
-      const match = message.match(/fb\.1\.[a-zA-Z0-9._-]+/);
+      const param = url.searchParams.get("fbc");
+      if (param) fbc = param;
+    } catch {
+      const match = message.match(/fb\.1\.[\w.-]+/);
       if (match) fbc = match[0];
     }
   }
 
-  // Verificação final
-  if (!fbc || !fbc.startsWith("fb.") || !phone) {
-    return res.status(400).json({ error: "Dados incompletos" });
+  // Ignora se sender é a empresa ou fromMe for true
+  if (
+    senderPhone === BUSINESS_NUMBER ||
+    phone === BUSINESS_NUMBER ||
+    fromMe === true
+  ) {
+    console.log("⛔ Ignorado: mensagem enviada pela empresa:", { fbc, phone });
+    return res.sendStatus(200);
   }
 
-  // Ignora se for o número da própria empresa
-  if (phone === EMPRESA_PHONE) {
-    console.log("⛔ Ignorado: tentativa de rastrear com número da empresa:", { fbc, phone });
-    return res.json({ ignored: true });
+  if (!fbc || !fbc.startsWith("fb.") || !senderPhone) {
+    console.log("⛔ Ignorado: dados incompletos ou inválidos:", { fbc, phone });
+    return res.sendStatus(200);
   }
 
-  console.log("✅ Lead recebido:", { fbc, phone, name });
+  console.log("✅ Lead recebido:", { fbc, phone: senderPhone, name });
 
   const logPath = path.join(__dirname, "tracker-fbc-log.json");
   let log = [];
@@ -61,22 +61,22 @@ app.post("/send", (req, res) => {
 
   const existing = log.find(entry => entry.fbc === fbc);
   if (existing) {
-    if (phone) existing.phone = phone;
+    if (senderPhone) existing.phone = senderPhone;
     if (name) existing.name = name;
   } else {
     log.unshift({
       fbc,
-      phone: phone || null,
+      phone: senderPhone || null,
       name: name || null,
       timestamp: new Date().toISOString()
     });
   }
 
   fs.writeFileSync(logPath, JSON.stringify(log, null, 2));
-  res.json({ success: true });
+  res.json({ saved: true });
 });
 
-// Rota manual (usada pelo tracker-event-sent.html)
+// Envio manual (event-sent.html)
 app.post("/tracker-log-from-render.php", (req, res) => {
   let { fbc, phone, name } = req.body;
 
@@ -99,7 +99,7 @@ app.post("/tracker-log-from-render.php", (req, res) => {
   } else {
     log.unshift({
       fbc,
-      phone: phone || null,
+      phone,
       name: name || null,
       timestamp: new Date().toISOString()
     });
@@ -109,7 +109,6 @@ app.post("/tracker-log-from-render.php", (req, res) => {
   res.json({ saved: true });
 });
 
-// Servir os arquivos HTML e JSON normalmente
 app.use("/", express.static(__dirname));
 
 app.listen(PORT, () => {
