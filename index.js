@@ -4,9 +4,9 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Número da empresa (para bloquear leads falsos)
-const YOUR_NUMBER = "353892490262";
+const EMPRESA_PHONE = '353892490262'; // número da Barbara Cleaning
 
+// Libera CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -17,34 +17,36 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// 🛡️ Bloqueia leads com número do próprio botão (evita falso rastreio)
-function isBlockedNumber(phone) {
-  return phone === YOUR_NUMBER;
-}
-
-// Rota principal (envio automático ou invisível)
+// Rota principal para rastreamento (usada por site e Z-API)
 app.post("/send", (req, res) => {
-  let { fbc, phone, name, message } = req.body;
+  let { fbc, phone, name, message, sender } = req.body;
 
-  // Tenta extrair fbc da mensagem
+  // Tenta capturar o número real do cliente vindo da Z-API
+  if (!phone && sender && sender.phone) {
+    phone = sender.phone;
+  }
+
+  // Tenta extrair o fbc da URL ou texto, se não veio direto
   if (!fbc && typeof message === "string") {
     try {
       const url = new URL(message);
       const fbcParam = url.searchParams.get("fbc");
       if (fbcParam) fbc = fbcParam;
     } catch (e) {
-      const match = message.match(/\.fbc\.(fb\.1\.[a-zA-Z0-9._-]+)/);
-      if (match && match[1]) fbc = match[1];
+      const match = message.match(/fb\.1\.[a-zA-Z0-9._-]+/);
+      if (match) fbc = match[0];
     }
   }
 
+  // Verificação final
   if (!fbc || !fbc.startsWith("fb.") || !phone) {
     return res.status(400).json({ error: "Dados incompletos" });
   }
 
-  if (isBlockedNumber(phone)) {
+  // Ignora se for o número da própria empresa
+  if (phone === EMPRESA_PHONE) {
     console.log("⛔ Ignorado: tentativa de rastrear com número da empresa:", { fbc, phone });
-    return res.status(403).json({ error: "Ignorado: número bloqueado" });
+    return res.json({ ignored: true });
   }
 
   console.log("✅ Lead recebido:", { fbc, phone, name });
@@ -74,7 +76,7 @@ app.post("/send", (req, res) => {
   res.json({ success: true });
 });
 
-// Rota manual (usada pelo painel de envio)
+// Rota manual (usada pelo tracker-event-sent.html)
 app.post("/tracker-log-from-render.php", (req, res) => {
   let { fbc, phone, name } = req.body;
 
@@ -107,7 +109,7 @@ app.post("/tracker-log-from-render.php", (req, res) => {
   res.json({ saved: true });
 });
 
-// Arquivos públicos
+// Servir os arquivos HTML e JSON normalmente
 app.use("/", express.static(__dirname));
 
 app.listen(PORT, () => {
